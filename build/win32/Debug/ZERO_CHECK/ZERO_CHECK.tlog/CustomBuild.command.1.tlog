@@ -1,0 +1,10 @@
+^C:\USERS\EDISO\DOWNLOADS\CS CLASSES\CMPM 123\CONNECT-4-STARTER\BUILD\CMAKEFILES\7962A4F4550F0B0B66BFD1E8ED3F28BA\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Users/ediso/Downloads/CS Classes/CMPM 123/connect-4-starter" "-BC:/Users/ediso/Downloads/CS Classes/CMPM 123/connect-4-starter/build" --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file "C:/Users/ediso/Downloads/CS Classes/CMPM 123/connect-4-starter/build/tictactoe.sln"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

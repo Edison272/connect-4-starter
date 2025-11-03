@@ -34,6 +34,8 @@ private:
     Bit *       PieceForPlayer(const int playerNumber);
     Player*     ownerAt(int index ) const;
     int         negamax(std::string& state, int depth, int playerColor);
+    bool        isAIBoardFull(const std::string& state);
+    int         evaluateAIBoard(const std::string& state);
 
     Grid*       _grid;
 };

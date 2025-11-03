@@ -188,6 +188,17 @@ void Grid::initializeSquare(int x, int y, float squareSize, const char* spriteNa
     }
 }
 
+ChessSquare* Grid::getSquareFromPos(ImVec2 position, float squareSize) {
+    int y = (position.x - squareSize/2) / squareSize;
+    int x = (position.x - squareSize/2) / squareSize;
+    if (isValid(x, y)) {
+        return getSquare(x, y);
+    } else {
+        return nullptr;
+    }
+    
+}
+
 // State management
 std::string Grid::getStateString() const
 {

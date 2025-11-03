@@ -15,6 +15,7 @@ public:
     // Basic access
     ChessSquare* getSquare(int x, int y);
     ChessSquare* getSquareByIndex(int index);
+    ChessSquare* getSquareFromPos(ImVec2 position, float squareSize);  // custom helper; returns square from ImVec position
     bool isValid(int x, int y) const;
     bool isEnabled(int x, int y) const;
     void setEnabled(int x, int y, bool enabled);
