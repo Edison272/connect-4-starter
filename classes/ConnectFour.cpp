@@ -48,7 +48,7 @@ bool ConnectFour::actionForEmptyHolder(BitHolder &holder)
     BitHolder *lowest_holder = nullptr;
     int hold_x = static_cast<int>((holder.getPosition().x - 80/2) / 80);
     int hold_y = static_cast<int>((holder.getPosition().y - 80/2) / 80);
-    std::cout << hold_x << "," << hold_y << " | " << _grid->getIndex(hold_x, hold_y) << std::endl;
+    //std::cout << hold_x << "," << hold_y << " | " << _grid->getIndex(hold_x, hold_y) << std::endl;
     for (int y = _grid->getHeight()-1; y >= 0; y--) {
         BitHolder *curr_square = _grid->getSquare(hold_x, y);
         if (curr_square->empty()) {
@@ -104,20 +104,30 @@ Player* ConnectFour::ownerAt(int index ) const
 }
 
 //
+// returns the bottom most empty y value of a column, given the x coordinate
+//
+int ConnectFour::getColumnTopFromX(int x)
+{
+    for (int y = _grid->getHeight()-1; y >= 0; y--) {
+        BitHolder *curr_square = _grid->getSquare(x, y);
+        if (curr_square->empty()) {
+            return y;
+        }
+    }
+    return -1;
+}
+
+//
 // helper function to traverse board during winner check
 // converts 4x4 index value to true grid index value
 //
-int ConnectFour::getUnscopedIndex(int x, int y, int index)
+int ConnectFour::getUnscopedIndex(int x, int y, int index, int scope)
 {
-    return _grid->getIndex(x + index % 4, y + index / 4);
+    return _grid->getIndex(x + index % scope, y + index / scope);
 }
 
 Player* ConnectFour::checkForWinner()
-{
-    static const int WinQuad[10][4] =  { {0,1,2,3}, {4,5,6,7}, {8,9,10,11}, {12,13,14,15},  // rows
-                                          {0,4,8,12}, {1,5,9,13}, {2,6,10,14}, {3,7,11,15},  // cols
-                                          {0,5,10,15}, {3,6,9,12} };                         // diagonals
-    
+{   
     //iterate for each possible quad within the 6 x 7 boardspace
     for( int x = 0; x <= _grid->getWidth() - 4; x++ ) {
         for( int y = 0; y <= _grid->getHeight() - 4; y++ ) {
@@ -125,13 +135,13 @@ Player* ConnectFour::checkForWinner()
             // within each quad, check for any matches
             for( int i=0; i<10; i++ ) {
                 const int *quad = WinQuad[i];
-                Player *player = ownerAt(getUnscopedIndex(x, y, quad[0]));
+                Player *player = ownerAt(getUnscopedIndex(x, y, quad[0], 4));
                 if( player && 
-                    player == ownerAt(getUnscopedIndex(x, y, quad[1])) && 
-                    player == ownerAt(getUnscopedIndex(x, y, quad[2])) && 
-                    player == ownerAt(getUnscopedIndex(x, y, quad[3]))
+                    player == ownerAt(getUnscopedIndex(x, y, quad[1], 4)) && 
+                    player == ownerAt(getUnscopedIndex(x, y, quad[2], 4)) && 
+                    player == ownerAt(getUnscopedIndex(x, y, quad[3], 4))
                 ) {
-                    std::cout << getUnscopedIndex(x, y, quad[0]) << getUnscopedIndex(x, y, quad[1]) << getUnscopedIndex(x, y, quad[2]) << getUnscopedIndex(x, y, quad[3]) << std::endl;
+                    std::cout << getUnscopedIndex(x, y, quad[0], 4) << getUnscopedIndex(x, y, quad[1], 4) << getUnscopedIndex(x, y, quad[2], 4) << getUnscopedIndex(x, y, quad[3], 4) << std::endl;
                     return player;
                 }       
             }
@@ -200,96 +210,187 @@ void ConnectFour::setStateString(const std::string &s)
 void ConnectFour::updateAI() 
 {
     // RANDOM AI
-    std::string open = "";
-    for (int i = 0; i < 42; i++) {
-        if (ownerAt(i) == nullptr) {
-            open += char(i);
+    // std::string open = "";
+    // for (int i = 0; i < 42; i++) {
+    //     if (ownerAt(i) == nullptr) {
+    //         open += char(i);
+    //     }
+    // }
+
+    // if (open.size() > 0) {
+    //     int index = open[rand() % open.length()];
+    //     int xcol = index % 7;
+    //     int ycol = index / 7;
+    //     BitHolder &holder = *_grid->getSquare(xcol, ycol);
+    //     actionForEmptyHolder(holder);
+    // }
+
+
+    // MINIMAX AI
+    int bestVal = -1000;
+    BitHolder* bestMove = nullptr;
+    std::string state = stateString();
+
+    for (int i = 0; i < 7; i++) {
+        // traverse all columns at their bottom most empty value and see what will happen
+        int x = board_columns_sequence[i];
+        int y = getColumnTopFromX(x);
+        if ( y == -1) {  // skip this column if it is full
+            std::cout << "next " << x << std::endl;
+            continue;
+        }
+        int index = y * 7 + x;
+        // Check if cell is empty
+        if (state[index] == '0') {
+            // Make the move
+            state[index] = '2';
+            int moveVal = -negamax(state, 6, HUMAN_PLAYER, -1000, 1000);
+            // Undo the move
+            state[index] = '0';
+            // If the value of the current move is more than the best value, update best
+            if (moveVal > bestVal) {
+                bestMove = _grid->getSquare(x, y);
+                bestVal = moveVal;
+                std::cout << x << ", " << y << std::endl;
+            }
         }
     }
 
-    int index = open[rand() % open.length()];
-    int xcol = index % 7;
-    int ycol = index / 7;
-    BitHolder &holder = *_grid->getSquare(xcol, ycol);
-    actionForEmptyHolder(holder);
-
-    // int bestVal = -1000;
-    // BitHolder* bestMove = nullptr;
-    // std::string state = stateString();
-
-    // // Traverse all cells, evaluate minimax function for all empty cells
-    // _grid->forEachSquare([&](ChessSquare* square, int x, int y) {
-    //     int index = y * 3 + x;
-    //     // Check if cell is empty
-    //     if (state[index] == '0') {
-    //         // Make the move
-    //         state[index] = '2';
-    //         int moveVal = -negamax(state, 0, HUMAN_PLAYER);
-    //         // Undo the move
-    //         state[index] = '0';
-    //         // If the value of the current move is more than the best value, update best
-    //         if (moveVal > bestVal) {
-    //             bestMove = square;
-    //             bestVal = moveVal;
-    //         }
-    //     }
-    // });
-
-
     // // Make the best move
-    // if(bestMove) {
-    //     if (actionForEmptyHolder(*bestMove)) {
-    //     }
-    // }
+    if(bestMove) {
+        if (actionForEmptyHolder(*bestMove)) {
+
+        }
+    }
 }
 
 bool ConnectFour::isAIBoardFull(const std::string& state) {
     return state.find('0') == std::string::npos;
 }
 
-int ConnectFour::evaluateAIBoard(const std::string& state) {
-    static const int kWinningTriples[8][3] =  { {0,1,2}, {3,4,5}, {6,7,8},  // rows
-                                                {0,3,6}, {1,4,7}, {2,5,8},  // cols
-                                                {0,4,8}, {2,4,6} };         // diagonals
-    for( int i=0; i<8; i++ ) {
-        const int *triple = kWinningTriples[i];
-        char first = state[triple[0]];
-        if( first != '0' && first == state[triple[1]] && first == state[triple[2]] ) {
-            return 10;   // someone won, negamax will handle who
+// evaulate the boardstate and return a board based on the current situation.
+// scoring punishes enemy advantagious positions, so curr_piece is parameter in order to distinguish who is the one playing
+int ConnectFour::evaluateAIBoard(const std::string& state, char curr_piece) {   
+    int score = 0;
+
+    // check horizontal connects
+    for (int y = 0; y < _grid->getHeight(); y++) {
+        for (int x = 0; x < _grid->getWidth()-3; x++) {
+            std::vector<char> window = {
+                state[_grid->getIndex(x, y)],
+                state[_grid->getIndex(x+1, y)],
+                state[_grid->getIndex(x+2, y)],
+                state[_grid->getIndex(x+3, y)]
+            };
+            score += evaluateAIWindow(window, curr_piece);
         }
     }
-    return 0; // No winner
+
+    // check horizontal connects
+    for (int y = 0; y < _grid->getHeight()-3; y++) {
+        for (int x = 0; x < _grid->getWidth(); x++) {
+            std::vector<char> window = {
+                state[_grid->getIndex(x, y)],
+                state[_grid->getIndex(x, y+1)],
+                state[_grid->getIndex(x, y+2)],
+                state[_grid->getIndex(x, y+3)]
+            };
+            score += evaluateAIWindow(window, curr_piece);
+        }
+    }
+
+    // check diagonal connects
+    // BL to TR
+    for (int y = 0; y < _grid->getHeight()-3; y++) {
+        for (int x = 0; x < _grid->getWidth()-3; x++) {
+            std::vector<char> window = {
+                state[_grid->getIndex(x, y)],
+                state[_grid->getIndex(x+1, y+1)],
+                state[_grid->getIndex(x+2, y+2)],
+                state[_grid->getIndex(x+3, y+3)]
+            };
+            score += evaluateAIWindow(window, curr_piece);
+        }
+    }
+    // TL to BR
+    for (int y = 3; y < _grid->getHeight(); y++) {
+        for (int x = 3; x < _grid->getWidth(); x++) {
+            std::vector<char> window = {
+                state[_grid->getIndex(x, y)],
+                state[_grid->getIndex(x-1, y-1)],
+                state[_grid->getIndex(x-2, y-2)],
+                state[_grid->getIndex(x-3, y-3)]
+            };
+            score += evaluateAIWindow(window, curr_piece);
+        }
+    }
+
+    return score;
 }
+
+// helper function for evaluateAIBoard
+int ConnectFour::evaluateAIWindow(std::vector<char> window, char curr_piece) {
+    char opp_piece = curr_piece == '2' ? '1' : '2';
+    int curr_count = std::count(window.begin(), window.end(), curr_piece);
+    int opp_count = std::count(window.begin(), window.end(), opp_piece);
+    int empty_count = std::count(window.begin(), window.end(), '0');
+
+    if (curr_count == 4) return +100000;
+    if (curr_count == 3 && empty_count == 1) return +100;
+    if (curr_count == 2 && empty_count == 2) return +10;
+    if (opp_count == 3 && empty_count == 1) return -120; // penalize enemy advantage
+    if (opp_count == 4) return -90000;                   // prioritize winning over block enemy wins though
+    return 0;
+}
+
 
 //
 // player is the current player's number (AI or human)
 //
-int ConnectFour::negamax(std::string& state, int depth, int playerColor) 
-{
-    int score = evaluateAIBoard(state);
+int ConnectFour::negamax(std::string& state, int depth, int playerColor, int alpha, int beta) 
+{   
+    int score = evaluateAIBoard(state, playerColor == HUMAN_PLAYER ? '1' : '2');
 
-    // Check if AI wins, human wins, or draw
-    if(score) { 
-        // A winning state is a loss for the player whose turn it is.
-        // The previous player made the winning move.
-        return -score; 
-    }
-
-    if(isAIBoardFull(state)) {
-        return 0; // Draw
+    // check depth
+    if (depth == 0) {
+        return score;
     }
 
     int bestVal = -1000; // Min value
-    for (int y = 0; y < 3; y++) {
-        for (int x = 0; x < 3; x++) {
-            // Check if cell is empty
-            if (state[y * 3 + x] == '0') {
-                // Make the move
-                state[y * 3 + x] = playerColor == HUMAN_PLAYER ? '1' : '2'; // Set the cell to the current player's color
-                bestVal = std::max(bestVal, -negamax(state, depth + 1, -playerColor));
-                // Undo the move for backtracking
-                state[y * 3 + x] = '0';
+    for (int i = 0; i < 7; i++) {
+        int x = board_columns_sequence[i];
+        int y = getColumnTopFromX(x);
+        if (y == -1) {  // skip this column if it is full
+            continue;
+        }
+        int index = y * 7 + x;
+        std::cout << "meep" << std::endl;
+        // Check if cell is empty
+        if (state[index] == '0') {
+            // Make the move
+            state[index] = playerColor == HUMAN_PLAYER ? '1' : '2'; // Set the cell to the current player's color
+            int nextPlayer = (playerColor == HUMAN_PLAYER) ? AI_PLAYER : HUMAN_PLAYER;
+            
+            // swap alpha and beta and make them negative to switch perspectives on the board
+            // find bestVal (the max)
+            if (isAIBoardFull(state)) {
+                depth = 0;
             }
+            bestVal = std::max(bestVal, -negamax(state, depth - 1, nextPlayer, -beta, -alpha));
+            
+            // Undo the move for backtracking
+            state[index] = '0'; 
+            
+            // retain the BEST score the of the curr player as alpha
+            if (bestVal > alpha) {
+                alpha = bestVal;
+            }
+
+            // "prune" this recursion, the opp has an advantage here
+            if (alpha >= beta) {
+                break;
+            }
+
         }
     }
 
