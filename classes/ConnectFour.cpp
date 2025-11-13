@@ -19,7 +19,7 @@ Bit* ConnectFour::PieceForPlayer(const int playerNumber)
     // depending on playerNumber load the "x.png" or the "o.png" graphic
     Bit *bit = new Bit();
     // should possibly be cached from player class?
-    bit->LoadTextureFromFile(playerNumber == AI_PLAYER ? "o.png" : "x.png");
+    bit->LoadTextureFromFile(playerNumber == AI_PLAYER ? "yellow.png" : "red.png");
     bit->setOwner(getPlayerAt(playerNumber == AI_PLAYER ? 1 : 0));
     return bit;
 }
@@ -111,6 +111,16 @@ int ConnectFour::getColumnTopFromX(int x)
     for (int y = _grid->getHeight()-1; y >= 0; y--) {
         BitHolder *curr_square = _grid->getSquare(x, y);
         if (curr_square->empty()) {
+            return y;
+        }
+    }
+    return -1;
+}
+
+int ConnectFour::getAIColumnTopFromX(std::string& state, int x)
+{
+    for (int y = _grid->getHeight()-1; y >= 0; y--) {
+        if (state[_grid->getIndex(x, y)] == '0') {
             return y;
         }
     }
@@ -230,20 +240,21 @@ void ConnectFour::updateAI()
     int bestVal = -1000;
     BitHolder* bestMove = nullptr;
     std::string state = stateString();
+    char curr_player_piece = getCurrentPlayer()->index() == 0 ? '1' : '2';
+    // std::cout << "play " << curr_player_piece << std::endl;
 
     for (int i = 0; i < 7; i++) {
         // traverse all columns at their bottom most empty value and see what will happen
         int x = board_columns_sequence[i];
         int y = getColumnTopFromX(x);
         if ( y == -1) {  // skip this column if it is full
-            std::cout << "next " << x << std::endl;
             continue;
         }
         int index = y * 7 + x;
         // Check if cell is empty
         if (state[index] == '0') {
             // Make the move
-            state[index] = '2';
+            state[index] = curr_player_piece;
             int moveVal = -negamax(state, 6, HUMAN_PLAYER, -1000, 1000);
             // Undo the move
             state[index] = '0';
@@ -350,7 +361,9 @@ int ConnectFour::evaluateAIWindow(std::vector<char> window, char curr_piece) {
 int ConnectFour::negamax(std::string& state, int depth, int playerColor, int alpha, int beta) 
 {   
     int score = evaluateAIBoard(state, playerColor == HUMAN_PLAYER ? '1' : '2');
-
+    if (isAIBoardFull(state)) {
+        depth = 0;
+    }
     // check depth
     if (depth == 0) {
         return score;
@@ -359,7 +372,7 @@ int ConnectFour::negamax(std::string& state, int depth, int playerColor, int alp
     int bestVal = -1000; // Min value
     for (int i = 0; i < 7; i++) {
         int x = board_columns_sequence[i];
-        int y = getColumnTopFromX(x);
+        int y = getAIColumnTopFromX(state, x);
         if (y == -1) {  // skip this column if it is full
             continue;
         }
@@ -373,9 +386,6 @@ int ConnectFour::negamax(std::string& state, int depth, int playerColor, int alp
             
             // swap alpha and beta and make them negative to switch perspectives on the board
             // find bestVal (the max)
-            if (isAIBoardFull(state)) {
-                depth = 0;
-            }
             bestVal = std::max(bestVal, -negamax(state, depth - 1, nextPlayer, -beta, -alpha));
             
             // Undo the move for backtracking

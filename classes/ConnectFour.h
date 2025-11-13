@@ -34,6 +34,7 @@ private:
     Bit *       PieceForPlayer(const int playerNumber);
     Player*     ownerAt(int index ) const;
     int         getColumnTopFromX(int x);
+    int         getAIColumnTopFromX(std::string& state, int x);
     int         getUnscopedIndex(int x, int y, int index, int scope);                // helper function to check for winner
     int         negamax(std::string& state, int depth, int playerColor, int alpha, int beta);
     bool        isAIBoardFull(const std::string& state);
